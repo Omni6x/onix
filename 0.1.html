@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONIX | Трекер Втрати Ваги</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-hue: 250;
+            --secondary-hue: 280;
+            --primary-bg: hsl(var(--primary-hue), 80%, 60%);
+            --primary-bg-hover: hsl(var(--primary-hue), 80%, 55%);
+            --primary-ring: hsl(var(--primary-hue), 80%, 70%);
+            --primary-chart-bg: hsla(var(--primary-hue), 80%, 60%, 0.1);
+            --primary-chart-border: hsla(var(--primary-hue), 80%, 60%, 1);
+        }
+        [data-theme="pink"] {
+            --primary-hue: 330;
+            --secondary-hue: 340;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Aurora Background Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20vh;
+            left: -20vw;
+            width: 140vw;
+            height: 140vh;
+            background: 
+                radial-gradient(at 20% 20%, hsla(var(--primary-hue), 80%, 70%, 0.2) 0px, transparent 50%),
+                radial-gradient(at 80% 25%, hsla(var(--secondary-hue), 80%, 70%, 0.15) 0px, transparent 50%),
+                radial-gradient(at 25% 80%, hsla(var(--primary-hue), 80%, 70%, 0.1) 0px, transparent 50%),
+                radial-gradient(at 75% 85%, hsla(180, 70%, 80%, 0.1) 0px, transparent 50%);
+            filter: blur(100px);
+            z-index: -1;
+            transform: translateZ(0); /* GPU acceleration */
+            transition: background 0.5s ease;
+        }
+        .bg-primary { background-color: var(--primary-bg); }
+        .hover\:bg-primary-dark:hover { background-color: var(--primary-bg-hover); }
+        .ring-primary { box-shadow: 0 0 0 2px var(--primary-ring); }
+        .focus\:ring-primary:focus { --tw-ring-color: var(--primary-bg); }
+        .focus\:border-primary:focus { border-color: var(--primary-bg); }
+        .text-primary { color: var(--primary-bg); }
+        .data-table-container::-webkit-scrollbar { width: 8px; }
+        .data-table-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .data-table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .data-table-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .gradient-header { background: linear-gradient(135deg, hsl(var(--primary-hue), 80%, 55%), hsl(var(--secondary-hue), 85%, 60%)); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .modal-content { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .toast { animation: toastIn 0.3s ease-out forwards; }
+        .toast.closing { animation: toastOut 0.3s ease-in forwards; }
+        @keyframes highlight { from { background-color: hsl(var(--primary-hue), 80%, 90%); } to { background-color: transparent; } }
+        .highlight-row { animation: highlight 2s ease-out; }
+        .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.07); }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-3"></div>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        
+        <header class="gradient-header text-white mb-8 p-6 sm:p-8 rounded-3xl shadow-xl flex justify-between items-center">
+            <div class="text-left">
+                 <h1 class="text-5xl sm:text-6xl font-black tracking-widest uppercase">ONIX</h1>
+                 <p class="text-slate-200 mt-1 sm:mt-2 text-base sm:text-lg">Мій Прогрес Схуднення</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="open-achievements-btn" class="bg-white/20 hover:bg-white/30 text-white rounded-full p-3 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white relative">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    <span id="achievements-badge" class="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center hidden"></span>
+                </button>
+                <button id="open-settings-btn" class="bg-white/20 hover:bg-white/30 text-white rounded-full p-3 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white">
+                    <i data-lucide="settings" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </header>
+        
+        <div id="motivational-quote" class="text-center mb-8 px-4">
+             <p class="text-slate-600 italic text-lg">"Подорож у тисячу миль починається з одного кроку."</p>
+        </div>
+
+        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="lg:col-span-2 flex flex-col gap-8" id="form-section">
+                <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
+                    <h2 id="form-title" class="text-2xl font-semibold mb-4 text-slate-900">Додати новий запис</h2>
+                    <form id="weight-form" class="space-y-4">
+                        <input type="hidden" id="entry-id">
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-slate-600 mb-1">Дата</label>
+                            <input type="date" id="date" required class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition">
+                        </div>
+                        <div>
+                            <label for="weight" class="block text-sm font-medium text-slate-600 mb-1">Вага (кг)</label>
+                            <div class="relative">
+                                <input type="number" id="weight" step="0.1" required placeholder="напр. 75.5" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition">
+                                <button type="button" id="copy-yesterday-btn" title="Копіювати вчорашню вагу" class="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-primary transition">
+                                    <i data-lucide="copy" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-slate-600 mb-1">Нотатки (необов'язково)</label>
+                            <input type="text" id="notes" placeholder="Як пройшов день?" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition">
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="submit" id="save-btn" class="w-full bg-primary text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-transform transform hover:scale-105">Зберегти</button>
+                            <button type="button" id="cancel-edit-btn" class="w-full bg-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-lg hover:bg-slate-300 transition hidden">Скасувати</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 flex flex-col gap-8">
+                <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-900">Ваша статистика</h2>
+                    <div id="stats-container" class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center"></div>
+                </div>
+                <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                        <h2 class="text-2xl font-semibold text-slate-900">Графік та Історія</h2>
+                         <div id="chart-filters" class="flex items-center border border-slate-200 rounded-lg p-1 text-sm bg-slate-50">
+                            <button data-period="7" class="chart-filter-btn px-3 py-1 rounded-md transition">7д</button>
+                            <button data-period="30" class="chart-filter-btn px-3 py-1 rounded-md transition">30д</button>
+                            <button data-period="all" class="chart-filter-btn px-3 py-1 rounded-md bg-primary/20 text-primary font-semibold">Все</button>
+                        </div>
+                    </div>
+                    <div class="h-96 w-full mb-8"><canvas id="progress-chart"></canvas></div>
+                    <div id="no-data-message" class="text-center text-slate-500 py-8"><p>Даних ще немає. Додайте свій перший запис!</p></div>
+                    <div class="data-table-container max-h-80 overflow-y-auto">
+                        <table id="history-table" class="min-w-full divide-y divide-slate-200 hidden">
+                            <thead class="bg-slate-50 sticky top-0"><tr class="*">
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Дата</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Вага</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Нотатки</th>
+                                <th class="relative px-6 py-3"><span class="sr-only">Дія</span></th>
+                            </tr></thead>
+                            <tbody id="history-body" class="bg-white divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 py-6 border-t border-slate-200/80">
+            <a href="https://t.me/omni1x" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-primary transition-colors inline-flex items-center gap-2 group">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform transform group-hover:scale-110"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+                 <span>t.me/omni1x</span>
+            </a>
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div id="achievements-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"><div class="modal-content bg-slate-50 rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[80vh] flex flex-col">
+        <button id="close-achievements-btn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10"><i data-lucide="x" class="w-6 h-6"></i></button>
+        <div class="p-8"><h2 class="text-2xl font-semibold mb-1 text-slate-900">Мої Досягнення</h2><p class="text-slate-500 mb-6">Ваш прогрес у цифрах та нагородах.</p></div>
+        <div id="achievements-grid" class="p-8 pt-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 overflow-y-auto"></div>
+    </div></div>
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"><div class="modal-content bg-slate-50 rounded-2xl shadow-2xl w-full max-w-md relative">
+        <button id="close-settings-btn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+        <div class="p-8"><h2 class="text-2xl font-semibold mb-6 text-slate-900">Налаштування</h2><div class="space-y-5">
+            <div><label for="height-modal" class="block text-sm font-medium text-slate-600 mb-1">Ваш зріст (см)</label><input type="number" id="height-modal" placeholder="напр. 170" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition"></div>
+            <div><label for="goal-modal" class="block text-sm font-medium text-slate-600 mb-1">Бажана вага (кг)</label><input type="number" id="goal-modal" step="0.1" placeholder="напр. 65.0" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition"></div>
+            <div class="pt-2"><label class="block text-sm font-medium text-slate-600 mb-2">Кольорова тема</label><div class="flex items-center gap-3">
+                <button id="theme-blue-btn" data-theme="blue" class="theme-btn w-10 h-10 rounded-full bg-blue-500 ring-offset-2 ring-slate-50 transition"></button>
+                <button id="theme-pink-btn" data-theme="pink" class="theme-btn w-10 h-10 rounded-full bg-pink-500 ring-offset-2 ring-slate-50 transition"></button>
+            </div></div>
+        </div></div>
+        <div class="bg-slate-100 p-4 rounded-b-2xl"><div class="grid grid-cols-2 gap-4">
+            <button id="import-data-btn" class="w-full bg-white text-slate-700 font-semibold py-3 px-4 rounded-lg border border-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition">Імпорт</button>
+            <button id="export-data-btn" class="w-full bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition">Експорт</button>
+            <input type="file" id="import-file-input" class="hidden" accept=".json">
+        </div></div>
+    </div></div>
+    <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden"><div class="modal-content bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+        <h3 id="confirm-modal-title" class="text-lg font-semibold text-slate-800 mb-4">Ви впевнені?</h3><p id="confirm-modal-text" class="text-slate-600 mb-6">Цю дію неможливо буде скасувати.</p>
+        <div class="flex justify-center gap-4">
+            <button id="confirm-modal-cancel" class="px-6 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold transition">Скасувати</button>
+            <button id="confirm-modal-confirm" class="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition">Видалити</button>
+        </div>
+    </div></div>
+    
+    <script>
+        // --- DOM Elements ---
+        const ALL_DOM_ELEMENTS = {
+            form: document.getElementById('weight-form'), formTitle: document.getElementById('form-title'), entryIdInput: document.getElementById('entry-id'), dateInput: document.getElementById('date'), weightInput: document.getElementById('weight'), notesInput: document.getElementById('notes'), saveBtn: document.getElementById('save-btn'), cancelEditBtn: document.getElementById('cancel-edit-btn'), copyYesterdayBtn: document.getElementById('copy-yesterday-btn'),
+            historyBody: document.getElementById('history-body'), progressChartCanvas: document.getElementById('progress-chart').getContext('2d'), noDataMessage: document.getElementById('no-data-message'), historyTable: document.getElementById('history-table'),
+            statsContainer: document.getElementById('stats-container'), quoteContainer: document.getElementById('motivational-quote'), toastContainer: document.getElementById('toast-container'), chartFilters: document.getElementById('chart-filters'),
+            settingsModal: document.getElementById('settings-modal'), openSettingsBtn: document.getElementById('open-settings-btn'), closeSettingsBtn: document.getElementById('close-settings-btn'), heightInputModal: document.getElementById('height-modal'), goalInputModal: document.getElementById('goal-modal'), themeBlueBtn: document.getElementById('theme-blue-btn'), themePinkBtn: document.getElementById('theme-pink-btn'), exportBtn: document.getElementById('export-data-btn'), importBtn: document.getElementById('import-data-btn'), importFileInput: document.getElementById('import-file-input'),
+            achievementsModal: document.getElementById('achievements-modal'), openAchievementsBtn: document.getElementById('open-achievements-btn'), closeAchievementsBtn: document.getElementById('close-achievements-btn'), achievementsGrid: document.getElementById('achievements-grid'), achievementsBadge: document.getElementById('achievements-badge'),
+            confirmModal: document.getElementById('confirm-modal'),
+        };
+        const { form, formTitle, entryIdInput, dateInput, weightInput, notesInput, saveBtn, cancelEditBtn, copyYesterdayBtn, historyBody, progressChartCanvas, noDataMessage, historyTable, statsContainer, quoteContainer, toastContainer, chartFilters, settingsModal, openSettingsBtn, closeSettingsBtn, heightInputModal, goalInputModal, themeBlueBtn, themePinkBtn, exportBtn, importBtn, importFileInput, achievementsModal, openAchievementsBtn, closeAchievementsBtn, achievementsGrid, achievementsBadge, confirmModal } = ALL_DOM_ELEMENTS;
+
+        // --- App State ---
+        let weightData = [];
+        let userSettings = {};
+        let achievements = {};
+        let chartInstance;
+        let activeChartPeriod = 'all';
+        let newAchievementsCount = 0;
+        
+        const QUOTES = ["Найкращий час посадити дерево був 20 років тому. Другий найкращий час – сьогодні.", "Не бійтеся рости повільно, бійтеся стояти на місці.", "Успіх – це сума невеликих зусиль, що повторюються день у день.", "Сила не приходить від перемог. Сила приходить, коли ти долаєш труднощі.", "Дисципліна — це міст між цілями та досягненнями.", "Вірте в себе, і ви будете нестримні."];
+        const ACHIEVEMENTS_LIST = {
+            firstStep: { title: 'Перший крок', icon: 'rocket', desc: 'Зробити перший запис' },
+            consistent7: { title: 'Тижнева стабільність', icon: 'flame', desc: '7 днів записів поспіль' },
+            consistent30: { title: 'Місяць дисципліни', icon: 'calendar-check', desc: '30 днів записів поспіль' },
+            data10: { title: 'Початківець', icon: 'database', desc: 'Зробити 10 записів' },
+            data50: { title: 'Колекціонер даних', icon: 'database-zap', desc: 'Зробити 50 записів' },
+            loss3: { title: 'Перші результати', icon: 'trending-down', desc: 'Втратити перші 3 кг' },
+            loss10: { title: 'Значний прогрес', icon: 'bar-chart-3', desc: 'Втратити 10 кг' },
+            goalMet: { title: 'Мета досягнута!', icon: 'trophy', desc: 'Досягти своєї вагової мети' },
+            configured: { title: 'Все налаштовано', icon: 'user-check', desc: 'Вказати зріст та мету' },
+        };
+
+        // --- Core Functions ---
+        const initializeApp = () => {
+            loadData();
+            migrateData();
+            loadUserSettings();
+            dateInput.value = new Date().toISOString().split('T')[0];
+            displayRandomQuote();
+            updateUI();
+            lucide.createIcons();
+            addEventListeners();
+        };
+
+        const loadData = () => {
+            weightData = JSON.parse(localStorage.getItem('weightTrackerData')) || [];
+            userSettings = JSON.parse(localStorage.getItem('weightTrackerSettings')) || { height: null, goal: null, theme: 'blue' };
+            achievements = JSON.parse(localStorage.getItem('weightTrackerAchievements')) || {};
+        };
+        const saveData = (type) => {
+            if (type === 'data') localStorage.setItem('weightTrackerData', JSON.stringify(weightData));
+            if (type === 'settings') localStorage.setItem('weightTrackerSettings', JSON.stringify(userSettings));
+            if (type === 'achievements') localStorage.setItem('weightTrackerAchievements', JSON.stringify(achievements));
+        };
+        const migrateData = () => {
+            let needsSave = false;
+            weightData.forEach(entry => { if (!entry.id) { entry.id = crypto.randomUUID(); needsSave = true; } });
+            if (needsSave) saveData('data');
+        };
+        const loadUserSettings = () => {
+            heightInputModal.value = userSettings.height || '';
+            goalInputModal.value = userSettings.goal || '';
+            setTheme(userSettings.theme, false);
+        };
+        const displayRandomQuote = () => quoteContainer.innerHTML = `<p class="text-slate-600 italic text-lg">"${QUOTES[Math.floor(Math.random() * QUOTES.length)]}"</p>`;
+        const updateUI = () => {
+            sortData();
+            renderStats();
+            renderTable();
+            renderChart();
+            lucide.createIcons();
+        };
+        const sortData = () => weightData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // --- Gamification ---
+        const checkAchievements = () => {
+            const initialCount = Object.keys(achievements).length;
+            const streak = calculateStreak();
+            const startWeight = weightData.length > 0 ? weightData[0].weight : 0;
+            const currentWeight = weightData.length > 0 ? weightData[weightData.length - 1].weight : 0;
+            const totalLoss = startWeight > 0 ? startWeight - currentWeight : 0;
+            
+            if (weightData.length >= 1) unlockAchievement('firstStep');
+            if (streak >= 7) unlockAchievement('consistent7');
+            if (streak >= 30) unlockAchievement('consistent30');
+            if (weightData.length >= 10) unlockAchievement('data10');
+            if (weightData.length >= 50) unlockAchievement('data50');
+            if (userSettings.height && userSettings.goal) unlockAchievement('configured');
+            if (totalLoss >= 3) unlockAchievement('loss3');
+            if (totalLoss >= 10) unlockAchievement('loss10');
+            if (userSettings.goal && currentWeight > 0 && currentWeight <= userSettings.goal) unlockAchievement('goalMet');
+
+            const finalCount = Object.keys(achievements).length;
+            if (finalCount > initialCount) {
+                newAchievementsCount += (finalCount - initialCount);
+                updateAchievementsBadge();
+            }
+        };
+        const unlockAchievement = (key) => {
+            if (!achievements[key]) {
+                achievements[key] = { unlocked: true, date: new Date().toISOString() };
+                const achievement = ACHIEVEMENTS_LIST[key];
+                showToast(achievement.title, achievement.icon);
+                if (key === 'goalMet') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+                saveData('achievements');
+                return true;
+            }
+            return false;
+        };
+        const updateAchievementsBadge = () => {
+            if (newAchievementsCount > 0) {
+                achievementsBadge.textContent = newAchievementsCount;
+                achievementsBadge.classList.remove('hidden');
+            } else {
+                achievementsBadge.classList.add('hidden');
+            }
+        };
+
+        // --- UI Rendering ---
+        const renderTable = () => {
+            noDataMessage.classList.toggle('hidden', weightData.length > 0);
+            historyTable.classList.toggle('hidden', weightData.length === 0);
+            if (weightData.length === 0) { historyBody.innerHTML = ''; return; }
+            historyBody.innerHTML = weightData.map(entry => `
+                <tr class="hover:bg-slate-50 transition-colors" id="row-${entry.id}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${new Date(entry.date).toLocaleDateString('uk-UA')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${entry.weight} кг</td>
+                    <td class="px-6 py-4 text-sm text-slate-500 max-w-xs truncate" title="${entry.notes || ''}">${entry.notes || '---'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-2">
+                        <button onclick="handleEdit('${entry.id}')" title="Редагувати" class="text-slate-400 hover:text-primary transition-colors p-1 rounded-full"><i data-lucide="edit-3" class="w-5 h-5"></i></button>
+                        <button onclick="handleDelete('${entry.id}')" title="Видалити" class="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </td>
+                </tr>`).join('');
+        };
+        const calculateStreak = () => {
+            if (weightData.length < 1) return 0;
+            let streak = 0; const today = new Date(); today.setHours(0,0,0,0); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+            const uniqueDates = [...new Set(weightData.map(e => new Date(e.date).setHours(0,0,0,0)))].sort((a,b) => b-a);
+            const lastEntryDate = new Date(uniqueDates[0]);
+            if (lastEntryDate.getTime() !== today.getTime() && lastEntryDate.getTime() !== yesterday.getTime()) return 0;
+            streak = 1;
+            for (let i = 0; i < uniqueDates.length - 1; i++) {
+                const diff = (new Date(uniqueDates[i]) - new Date(uniqueDates[i+1])) / (1000 * 60 * 60 * 24);
+                if (diff === 1) streak++; else break;
+            } return streak;
+        };
+        const renderStats = () => {
+            if (weightData.length === 0) { statsContainer.innerHTML = `<p class="col-span-full text-slate-500">Ваша статистика з'явиться тут.</p>`; return; }
+            const currentWeight = weightData[weightData.length - 1].weight;
+            const startWeight = weightData[0].weight;
+            const totalChange = currentWeight - startWeight;
+            const weeklyData = weightData.filter(e => (new Date() - new Date(e.date)) / (1000*3600*24) <= 7);
+            const weeklyAvg = weeklyData.length > 0 ? (weeklyData.reduce((a,c) => a+c.weight,0) / weeklyData.length).toFixed(1) : '---';
+            const stats = [
+                { icon: 'scale', label: 'Поточна', value: `${currentWeight.toFixed(1)} кг` },
+                { icon: 'trending-up', label: 'Зміни', value: `${totalChange.toFixed(1)} кг`, color: totalChange > 0 ? 'text-red-500' : (totalChange < 0 ? 'text-green-500' : '') },
+                { icon: 'flag', label: 'До мети', value: userSettings.goal ? `${(currentWeight - userSettings.goal).toFixed(1)} кг` : '---' },
+                { icon: 'calendar', label: 'Ø за 7д', value: `${weeklyAvg} кг` },
+                { icon: 'flame', label: 'Стрік', value: `${calculateStreak()} д.` },
+                { icon: 'trophy', label: 'Рекорд', value: `${Math.min(...weightData.map(e => e.weight)).toFixed(1)} кг` },
+            ];
+            statsContainer.innerHTML = stats.map(stat => `
+                <div class="stat-card p-2 rounded-lg flex flex-col items-center justify-center bg-white/50 border border-slate-200/50">
+                    <div class="flex items-center gap-2"><i data-lucide="${stat.icon}" class="w-5 h-5 text-slate-400"></i><p class="text-xs text-slate-500 font-medium">${stat.label}</p></div>
+                    <p class="text-2xl font-bold text-slate-900 ${stat.color || ''}">${stat.value}</p>
+                </div>`).join('');
+        };
+        const renderChart = () => {
+            if (chartInstance) chartInstance.destroy();
+            let filteredData = (activeChartPeriod === 'all') ? weightData : weightData.filter(e => (new Date() - new Date(e.date)) / (1000*3600*24) <= parseInt(activeChartPeriod,10));
+            const labels = filteredData.map(e => new Date(e.date).toLocaleDateString('uk-UA', {day:'numeric',month:'short'}));
+            const data = filteredData.map(e => e.weight);
+            const trendData = (d => d.length < 2 ? [] : ( (n,sX,sY,sXY,sX2) => d.map((_,x) => (n*sXY-sX*sY)/(n*sX2-sX*sX)*x + (sY-(n*sXY-sX*sY)/(n*sX2-sX*sX)*sX)/n) )(d.length, ...d.reduce(([sX,sY,sXY,sX2],y,x)=>[sX+x,sY+y,sXY+x*y,sX2+x*x],[0,0,0,0])))(data);
+            const yAxisConfig = {};
+            if (data.length > 1) { const min=Math.min(...data), max=Math.max(...data), pad=Math.max(0.5,(max-min)*0.2); yAxisConfig.min=Math.floor((min-pad)*2)/2; yAxisConfig.max=Math.ceil((max+pad)*2)/2; }
+            
+            chartInstance = new Chart(progressChartCanvas, { type: 'line', data: { labels, datasets: [
+                { label: 'Вага (кг)', data, borderColor: 'var(--primary-chart-border)', backgroundColor: 'var(--primary-chart-bg)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: 'var(--primary-chart-border)', pointBorderColor: '#fff', pointRadius: 5, pointBorderWidth: 2, pointHoverRadius: 8, pointHoverBackgroundColor: '#fff', pointHoverBorderColor: 'var(--primary-chart-border)' },
+                ...(trendData.length > 0 ? [{ label: 'Тренд', data: trendData, borderColor: '#94a3b8', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false }] : [])
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { ...yAxisConfig, beginAtZero: false, grid: { color: '#e2e8f0' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', padding: 12, cornerRadius: 8, filter: item => item.datasetIndex === 0 }, annotation: { annotations: userSettings.goal ? { goalLine: { type: 'line', yMin: userSettings.goal, yMax: userSettings.goal, borderColor: '#fb7185', borderWidth: 2, borderDash: [6,6], label: { content: `Ціль: ${userSettings.goal} кг`, enabled: true, position: 'end', backgroundColor: '#fb7185' } } } : {} } }, interaction: { mode: 'index', intersect: false }, onClick: (e) => {
+                const points = chartInstance.getElementsAtEventForMode(e, 'index', { intersect: true }, true);
+                if (points.length) { const index = points[0].index; const entryId = filteredData[index].id; const row = document.getElementById(`row-${entryId}`); if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('highlight-row'); setTimeout(() => row.classList.remove('highlight-row'), 2000); } }
+            } } });
+        };
+        const renderAchievementsModal = () => {
+            achievementsGrid.innerHTML = Object.entries(ACHIEVEMENTS_LIST).map(([key, ach]) => {
+                const isUnlocked = achievements[key]?.unlocked;
+                return `
+                <div class="text-center flex flex-col items-center p-4 rounded-xl ${isUnlocked ? 'bg-green-100/80' : 'bg-slate-100/80'}">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center ${isUnlocked ? 'bg-green-500' : 'bg-slate-300'} mb-3">
+                        <i data-lucide="${ach.icon}" class="w-8 h-8 ${isUnlocked ? 'text-white' : 'text-slate-500'}"></i>
+                    </div>
+                    <p class="font-semibold text-slate-800 text-sm">${ach.title}</p>
+                    <p class="text-slate-500 text-xs mt-1">${ach.desc}</p>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        // --- Event Handlers & Actions ---
+        const handleFormSubmit = (e) => {
+            e.preventDefault();
+            const id = entryIdInput.value;
+            const entryData = { date: dateInput.value, weight: parseFloat(weightInput.value), notes: notesInput.value.trim() };
+            if (!entryData.date || isNaN(entryData.weight) || entryData.weight <= 0) return alert("Будь ласка, введіть коректну дату та вагу.");
+            
+            if (id) {
+                const index = weightData.findIndex(e => e.id === id);
+                if (index > -1) weightData[index] = { ...weightData[index], ...entryData };
+            } else {
+                weightData.push({ id: crypto.randomUUID(), ...entryData });
+            }
+            saveData('data');
+            updateUI();
+            checkAchievements();
+            resetForm();
+        };
+        const handleEdit = (id) => {
+            const entry = weightData.find(e => e.id === id);
+            if (!entry) return;
+            entryIdInput.value = entry.id; dateInput.value = entry.date; weightInput.value = entry.weight; notesInput.value = entry.notes;
+            formTitle.textContent = 'Редагувати запис'; saveBtn.textContent = 'Оновити';
+            cancelEditBtn.classList.remove('hidden');
+            document.getElementById('form-section').scrollIntoView();
+        };
+        const handleDelete = (id) => showConfirmModal(() => {
+            weightData = weightData.filter(e => e.id !== id);
+            saveData('data');
+            updateUI();
+        });
+        const resetForm = () => {
+            form.reset(); entryIdInput.value = ''; formTitle.textContent = 'Додати новий запис';
+            saveBtn.textContent = 'Зберегти'; cancelEditBtn.classList.add('hidden');
+            dateInput.value = new Date().toISOString().split('T')[0];
+        };
+        const showConfirmModal = (callback) => {
+            confirmModal.classList.remove('hidden');
+            const confirmBtn = document.getElementById('confirm-modal-confirm'), cancelBtn = document.getElementById('confirm-modal-cancel');
+            const onConfirm = () => { callback(); onClose(); }, onClose = () => {
+                confirmModal.classList.add('hidden'); confirmBtn.removeEventListener('click', onConfirm); cancelBtn.removeEventListener('click', onClose);
+            };
+            confirmBtn.addEventListener('click', onConfirm); cancelBtn.addEventListener('click', onClose);
+        };
+        const handleSettingsSave = () => {
+            userSettings.height = heightInputModal.value ? parseFloat(heightInputModal.value) : null;
+            userSettings.goal = goalInputModal.value ? parseFloat(goalInputModal.value) : null;
+            saveData('settings');
+            updateUI();
+            checkAchievements();
+        };
+        const setTheme = (theme, shouldSave = true) => {
+            document.documentElement.dataset.theme = theme;
+            themePinkBtn.classList.toggle('ring-2', theme === 'pink'); themeBlueBtn.classList.toggle('ring-2', theme !== 'pink');
+            userSettings.theme = theme;
+            if (shouldSave) saveData('settings');
+        };
+        const handleExport = () => {
+            if (weightData.length === 0) return alert("Немає даних для експорту.");
+            const dataStr = JSON.stringify({settings: userSettings, data: weightData, achievements}, null, 2);
+            const link = document.createElement('a');
+            link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            link.download = 'onix_weight_progress.json';
+            link.click();
+        };
+        const handleImport = (event) => {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported && Array.isArray(imported.data) && imported.settings) {
+                        weightData = imported.data; userSettings = imported.settings; achievements = imported.achievements || {};
+                        saveData('data'); saveData('settings'); saveData('achievements');
+                        loadUserSettings(); updateUI();
+                        alert('Дані успішно імпортовано!');
+                    } else { throw new Error('Неправильний формат файлу.'); }
+                } catch (error) { alert('Помилка імпорту: ' + error.message); }
+            };
+            reader.readAsText(file); importFileInput.value = '';
+        };
+        const addEventListeners = () => {
+            form.addEventListener('submit', handleFormSubmit);
+            cancelEditBtn.addEventListener('click', resetForm);
+            openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+            closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+            settingsModal.addEventListener('click', e => { if (e.target === settingsModal) settingsModal.classList.add('hidden'); });
+            openAchievementsBtn.addEventListener('click', () => {
+                renderAchievementsModal();
+                achievementsModal.classList.remove('hidden');
+                newAchievementsCount = 0; updateAchievementsBadge();
+            });
+            closeAchievementsBtn.addEventListener('click', () => achievementsModal.classList.add('hidden'));
+            achievementsModal.addEventListener('click', e => { if (e.target === achievementsModal) achievementsModal.classList.add('hidden'); });
+            themeBlueBtn.addEventListener('click', () => setTheme('blue', true));
+            themePinkBtn.addEventListener('click', () => setTheme('pink', true));
+            chartFilters.addEventListener('click', e => {
+                if (e.target.matches('.chart-filter-btn')) {
+                    activeChartPeriod = e.target.dataset.period;
+                    document.querySelectorAll('.chart-filter-btn').forEach(btn => btn.classList.remove('bg-primary/20', 'text-primary', 'font-semibold'));
+                    e.target.classList.add('bg-primary/20', 'text-primary', 'font-semibold');
+                    renderChart();
+                }
+            });
+            copyYesterdayBtn.addEventListener('click', () => {
+                if(weightData.length > 0) weightInput.value = weightData[weightData.length - 1].weight;
+            });
+            heightInputModal.addEventListener('input', handleSettingsSave);
+            goalInputModal.addEventListener('input', handleSettingsSave);
+            exportBtn.addEventListener('click', handleExport);
+            importBtn.addEventListener('click', () => importFileInput.click());
+            importFileInput.addEventListener('change', handleImport);
+        };
+        
+        // --- START THE APP ---
+        window.handleEdit = handleEdit;
+        window.handleDelete = handleDelete;
+        initializeApp();
+    </script>
+</body>
+</html>
+
