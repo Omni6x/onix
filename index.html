@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ONIX | Трекер Втрати Ваги</title>
@@ -76,11 +72,12 @@
         .highlight-row { animation: highlight 2s ease-out; }
         .stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.07); }
+        /* NEW: Styles for Photo Diary */
+        .photo-card { transition: all 0.2s ease-in-out; }
+        .photo-card:hover { transform: scale(1.03); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.15); }
+        .photo-card .overlay { opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .photo-card:hover .overlay { opacity: 1; }
     </style>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="shortcut icon" href="favicon.ico">
 </head>
 <body class="text-slate-800">
 
@@ -90,8 +87,8 @@
         
         <header class="gradient-header text-white mb-8 p-6 sm:p-8 rounded-3xl shadow-xl flex justify-between items-center">
             <div class="text-left">
-                 <h1 class="text-5xl sm:text-6xl font-black tracking-widest uppercase">ONIX</h1>
-                 <p class="text-slate-200 mt-1 sm:mt-2 text-base sm:text-lg">Мій Прогрес Схуднення</p>
+                <h1 class="text-5xl sm:text-6xl font-black tracking-widest uppercase">ONIX</h1>
+                <p class="text-slate-200 mt-1 sm:mt-2 text-base sm:text-lg">Мій Прогрес Схуднення</p>
             </div>
             <div class="flex items-center gap-2">
                 <button id="open-achievements-btn" class="bg-white/20 hover:bg-white/30 text-white rounded-full p-3 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white relative">
@@ -142,7 +139,8 @@
             <div class="lg:col-span-3 flex flex-col gap-8">
                 <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
                     <h2 class="text-2xl font-semibold mb-4 text-slate-900">Ваша статистика</h2>
-                    <div id="stats-container" class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center"></div>
+                    <div id="stats-container" class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center"></div>
+                    <div id="streak-calendar-container" class="mt-6"></div>
                 </div>
                 <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
                     <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
@@ -157,7 +155,7 @@
                     <div id="no-data-message" class="text-center text-slate-500 py-8"><p>Даних ще немає. Додайте свій перший запис!</p></div>
                     <div class="data-table-container max-h-80 overflow-y-auto">
                         <table id="history-table" class="min-w-full divide-y divide-slate-200 hidden">
-                            <thead class="bg-slate-50 sticky top-0"><tr class="*">
+                            <thead class="bg-slate-50 sticky top-0"><tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Дата</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Вага</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Нотатки</th>
@@ -167,18 +165,31 @@
                         </table>
                     </div>
                 </div>
+                
+                <div id="photo-diary-section" class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-slate-200/50">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-slate-900">Фото-щоденник</h2>
+                        <label for="add-photo-input" class="bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-transform transform hover:scale-105 cursor-pointer flex items-center gap-2">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                            <span>Додати фото</span>
+                        </label>
+                        <input type="file" id="add-photo-input" class="hidden" accept="image/*">
+                    </div>
+                    <div id="photo-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <p id="no-photos-message" class="text-slate-500 col-span-full text-center py-4">Ваші фотографії прогресу з'являться тут.</p>
+                    </div>
+                </div>
             </div>
         </main>
         
         <footer class="text-center mt-12 py-6 border-t border-slate-200/80">
             <a href="https://t.me/omni1x" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-primary transition-colors inline-flex items-center gap-2 group">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform transform group-hover:scale-110"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
-                 <span>t.me/omni1x</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform transform group-hover:scale-110"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+                <span>t.me/omni1x</span>
             </a>
         </footer>
     </div>
     
-    <!-- Modals -->
     <div id="achievements-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"><div class="modal-content bg-slate-50 rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[80vh] flex flex-col">
         <button id="close-achievements-btn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10"><i data-lucide="x" class="w-6 h-6"></i></button>
         <div class="p-8"><h2 class="text-2xl font-semibold mb-1 text-slate-900">Мої Досягнення</h2><p class="text-slate-500 mb-6">Ваш прогрес у цифрах та нагородах.</p></div>
@@ -207,6 +218,17 @@
             <button id="confirm-modal-confirm" class="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition">Видалити</button>
         </div>
     </div></div>
+
+    <div id="welcome-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden"><div class="modal-content bg-slate-50 rounded-2xl shadow-2xl w-full max-w-md relative p-8">
+        <h2 class="text-2xl font-bold mb-2 text-slate-900">Ласкаво просимо в ONIX!</h2>
+        <p class="text-slate-600 mb-6">Давайте налаштуємо ваш профіль, щоб почати.</p>
+        <div class="space-y-4">
+            <div><label for="welcome-height" class="block text-sm font-medium text-slate-600 mb-1">Ваш зріст (см)</label><input type="number" id="welcome-height" placeholder="напр. 170" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition"></div>
+            <div><label for="welcome-start-weight" class="block text-sm font-medium text-slate-600 mb-1">Поточна вага (кг)</label><input type="number" step="0.1" id="welcome-start-weight" placeholder="напр. 80.5" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition"></div>
+            <div><label for="welcome-goal" class="block text-sm font-medium text-slate-600 mb-1">Бажана вага (кг)</label><input type="number" step="0.1" id="welcome-goal" placeholder="напр. 65.0" class="w-full px-4 py-2 border bg-white border-slate-300 rounded-lg focus:ring-2 focus:border-primary focus:ring-primary transition"></div>
+            <button id="welcome-start-btn" class="w-full bg-primary text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-transform transform hover:scale-105 mt-4">Почати відстеження</button>
+        </div>
+    </div></div>
     
     <script>
         // --- DOM Elements ---
@@ -217,13 +239,18 @@
             settingsModal: document.getElementById('settings-modal'), openSettingsBtn: document.getElementById('open-settings-btn'), closeSettingsBtn: document.getElementById('close-settings-btn'), heightInputModal: document.getElementById('height-modal'), goalInputModal: document.getElementById('goal-modal'), themeBlueBtn: document.getElementById('theme-blue-btn'), themePinkBtn: document.getElementById('theme-pink-btn'), exportBtn: document.getElementById('export-data-btn'), importBtn: document.getElementById('import-data-btn'), importFileInput: document.getElementById('import-file-input'),
             achievementsModal: document.getElementById('achievements-modal'), openAchievementsBtn: document.getElementById('open-achievements-btn'), closeAchievementsBtn: document.getElementById('close-achievements-btn'), achievementsGrid: document.getElementById('achievements-grid'), achievementsBadge: document.getElementById('achievements-badge'),
             confirmModal: document.getElementById('confirm-modal'),
+            // NEW: DOM elements for new features
+            welcomeModal: document.getElementById('welcome-modal'), welcomeStartBtn: document.getElementById('welcome-start-btn'),
+            photoGrid: document.getElementById('photo-grid'), noPhotosMessage: document.getElementById('no-photos-message'), addPhotoInput: document.getElementById('add-photo-input'),
+            streakCalendarContainer: document.getElementById('streak-calendar-container'),
         };
-        const { form, formTitle, entryIdInput, dateInput, weightInput, notesInput, saveBtn, cancelEditBtn, copyYesterdayBtn, historyBody, progressChartCanvas, noDataMessage, historyTable, statsContainer, quoteContainer, toastContainer, chartFilters, settingsModal, openSettingsBtn, closeSettingsBtn, heightInputModal, goalInputModal, themeBlueBtn, themePinkBtn, exportBtn, importBtn, importFileInput, achievementsModal, openAchievementsBtn, closeAchievementsBtn, achievementsGrid, achievementsBadge, confirmModal } = ALL_DOM_ELEMENTS;
+        const { form, formTitle, entryIdInput, dateInput, weightInput, notesInput, saveBtn, cancelEditBtn, copyYesterdayBtn, historyBody, progressChartCanvas, noDataMessage, historyTable, statsContainer, quoteContainer, toastContainer, chartFilters, settingsModal, openSettingsBtn, closeSettingsBtn, heightInputModal, goalInputModal, themeBlueBtn, themePinkBtn, exportBtn, importBtn, importFileInput, achievementsModal, openAchievementsBtn, closeAchievementsBtn, achievementsGrid, achievementsBadge, confirmModal, welcomeModal, welcomeStartBtn, photoGrid, noPhotosMessage, addPhotoInput, streakCalendarContainer } = ALL_DOM_ELEMENTS;
 
         // --- App State ---
         let weightData = [];
         let userSettings = {};
         let achievements = {};
+        let photoDiary = []; // NEW: State for photos
         let chartInstance;
         let activeChartPeriod = 'all';
         let newAchievementsCount = 0;
@@ -239,11 +266,15 @@
             loss10: { title: 'Значний прогрес', icon: 'bar-chart-3', desc: 'Втратити 10 кг' },
             goalMet: { title: 'Мета досягнута!', icon: 'trophy', desc: 'Досягти своєї вагової мети' },
             configured: { title: 'Все налаштовано', icon: 'user-check', desc: 'Вказати зріст та мету' },
+            photoAdded: { title: 'На пам\'ять', icon: 'camera', desc: 'Додати перше фото до щоденника' }, // NEW Achievement
         };
 
         // --- Core Functions ---
         const initializeApp = () => {
             loadData();
+            if (!localStorage.getItem('onix-welcomed') && weightData.length === 0) {
+                welcomeModal.classList.remove('hidden');
+            }
             migrateData();
             loadUserSettings();
             dateInput.value = new Date().toISOString().split('T')[0];
@@ -257,11 +288,13 @@
             weightData = JSON.parse(localStorage.getItem('weightTrackerData')) || [];
             userSettings = JSON.parse(localStorage.getItem('weightTrackerSettings')) || { height: null, goal: null, theme: 'blue' };
             achievements = JSON.parse(localStorage.getItem('weightTrackerAchievements')) || {};
+            photoDiary = JSON.parse(localStorage.getItem('weightTrackerPhotos')) || []; // NEW: Load photos
         };
         const saveData = (type) => {
             if (type === 'data') localStorage.setItem('weightTrackerData', JSON.stringify(weightData));
             if (type === 'settings') localStorage.setItem('weightTrackerSettings', JSON.stringify(userSettings));
             if (type === 'achievements') localStorage.setItem('weightTrackerAchievements', JSON.stringify(achievements));
+            if (type === 'photos') localStorage.setItem('weightTrackerPhotos', JSON.stringify(photoDiary)); // NEW: Save photos
         };
         const migrateData = () => {
             let needsSave = false;
@@ -279,6 +312,8 @@
             renderStats();
             renderTable();
             renderChart();
+            renderPhotoDiary(); // NEW
+            renderStreakCalendar(); // NEW
             lucide.createIcons();
         };
         const sortData = () => weightData.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -300,6 +335,7 @@
             if (totalLoss >= 3) unlockAchievement('loss3');
             if (totalLoss >= 10) unlockAchievement('loss10');
             if (userSettings.goal && currentWeight > 0 && currentWeight <= userSettings.goal) unlockAchievement('goalMet');
+            if (photoDiary.length > 0) unlockAchievement('photoAdded'); // NEW
 
             const finalCount = Object.keys(achievements).length;
             if (finalCount > initialCount) {
@@ -332,7 +368,7 @@
             noDataMessage.classList.toggle('hidden', weightData.length > 0);
             historyTable.classList.toggle('hidden', weightData.length === 0);
             if (weightData.length === 0) { historyBody.innerHTML = ''; return; }
-            historyBody.innerHTML = weightData.map(entry => `
+            historyBody.innerHTML = [...weightData].reverse().map(entry => `
                 <tr class="hover:bg-slate-50 transition-colors" id="row-${entry.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${new Date(entry.date).toLocaleDateString('uk-UA')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${entry.weight} кг</td>
@@ -355,23 +391,56 @@
                 if (diff === 1) streak++; else break;
             } return streak;
         };
+        // NEW: Updated renderStats with BMI and Prediction
         const renderStats = () => {
             if (weightData.length === 0) { statsContainer.innerHTML = `<p class="col-span-full text-slate-500">Ваша статистика з'явиться тут.</p>`; return; }
             const currentWeight = weightData[weightData.length - 1].weight;
             const startWeight = weightData[0].weight;
             const totalChange = currentWeight - startWeight;
-            const weeklyData = weightData.filter(e => (new Date() - new Date(e.date)) / (1000*3600*24) <= 7);
-            const weeklyAvg = weeklyData.length > 0 ? (weeklyData.reduce((a,c) => a+c.weight,0) / weeklyData.length).toFixed(1) : '---';
+            
+            // BMI Calculation
+            let bmi = '---', bmiCategory = '', bmiColor = '';
+            if (userSettings.height) {
+                const heightInMeters = userSettings.height / 100;
+                bmi = (currentWeight / (heightInMeters * heightInMeters)).toFixed(1);
+                if (bmi < 18.5) { bmiCategory = 'Недостатня'; bmiColor = 'text-blue-500'; }
+                else if (bmi < 25) { bmiCategory = 'Норма'; bmiColor = 'text-green-500'; }
+                else if (bmi < 30) { bmiCategory = 'Надмірна'; bmiColor = 'text-orange-500'; }
+                else { bmiCategory = 'Ожиріння'; bmiColor = 'text-red-500'; }
+            }
+
+            // Goal Prediction
+            let prediction = '---';
+            if(userSettings.goal && currentWeight > userSettings.goal && weightData.length > 1) {
+                const lastMonthData = weightData.filter(e => (new Date() - new Date(e.date)) < 30 * 24 * 60 * 60 * 1000);
+                if(lastMonthData.length > 1) {
+                    const first = lastMonthData[0];
+                    const last = lastMonthData[lastMonthData.length - 1];
+                    const days = (new Date(last.date) - new Date(first.date)) / (1000 * 3600 * 24);
+                    if (days > 0) {
+                        const weeklyLoss = ((first.weight - last.weight) / days) * 7;
+                        if (weeklyLoss > 0) {
+                            const weeksToGo = (currentWeight - userSettings.goal) / weeklyLoss;
+                            const targetDate = new Date();
+                            targetDate.setDate(targetDate.getDate() + weeksToGo * 7);
+                            prediction = targetDate.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+                        }
+                    }
+                }
+            }
+
             const stats = [
                 { icon: 'scale', label: 'Поточна', value: `${currentWeight.toFixed(1)} кг` },
                 { icon: 'trending-up', label: 'Зміни', value: `${totalChange.toFixed(1)} кг`, color: totalChange > 0 ? 'text-red-500' : (totalChange < 0 ? 'text-green-500' : '') },
                 { icon: 'flag', label: 'До мети', value: userSettings.goal ? `${(currentWeight - userSettings.goal).toFixed(1)} кг` : '---' },
-                { icon: 'calendar', label: 'Ø за 7д', value: `${weeklyAvg} кг` },
+                { icon: 'activity', label: 'ІМТ', value: bmi, desc: bmiCategory, color: bmiColor },
                 { icon: 'flame', label: 'Стрік', value: `${calculateStreak()} д.` },
                 { icon: 'trophy', label: 'Рекорд', value: `${Math.min(...weightData.map(e => e.weight)).toFixed(1)} кг` },
+                { icon: 'calendar-check-2', label: 'Прогноз', value: prediction },
+                { icon: 'database', label: 'Записів', value: weightData.length },
             ];
             statsContainer.innerHTML = stats.map(stat => `
-                <div class="stat-card p-2 rounded-lg flex flex-col items-center justify-center bg-white/50 border border-slate-200/50">
+                <div class="stat-card p-2 rounded-lg flex flex-col items-center justify-center bg-white/50 border border-slate-200/50" title="${stat.desc || stat.label}">
                     <div class="flex items-center gap-2"><i data-lucide="${stat.icon}" class="w-5 h-5 text-slate-400"></i><p class="text-xs text-slate-500 font-medium">${stat.label}</p></div>
                     <p class="text-2xl font-bold text-slate-900 ${stat.color || ''}">${stat.value}</p>
                 </div>`).join('');
@@ -407,6 +476,85 @@
             }).join('');
             lucide.createIcons();
         };
+
+        // NEW: Function to render streak calendar
+        const renderStreakCalendar = () => {
+            const entryDates = new Set(weightData.map(e => new Date(e.date).toISOString().split('T')[0]));
+            const today = new Date();
+            let calendarHTML = `<h3 class="text-sm font-semibold text-slate-600 mb-2 text-center">Ваша активність за останні 2 тижні</h3><div class="flex flex-wrap justify-center gap-1.5">`;
+            for (let i = 13; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateString = date.toISOString().split('T')[0];
+                const day = date.toLocaleDateString('uk-UA', { weekday: 'short' });
+                const isFilled = entryDates.has(dateString);
+                calendarHTML += `<div class="text-center" title="${date.toLocaleDateString('uk-UA')}">
+                    <div class="w-8 h-8 rounded-md ${isFilled ? 'bg-primary/80' : 'bg-slate-200'}"></div>
+                    <p class="text-xs text-slate-500 mt-1">${day}</p>
+                </div>`;
+            }
+            calendarHTML += '</div>';
+            streakCalendarContainer.innerHTML = calendarHTML;
+        };
+
+        // NEW: Functions for Photo Diary
+        const renderPhotoDiary = () => {
+            photoGrid.innerHTML = '';
+            noPhotosMessage.classList.toggle('hidden', photoDiary.length > 0);
+            photoDiary.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'photo-card relative rounded-lg overflow-hidden shadow-md group aspect-square';
+                card.innerHTML = `
+                    <img src="${photo.src}" class="w-full h-full object-cover">
+                    <div class="overlay absolute inset-0 bg-black/60 flex flex-col justify-between p-3 text-white">
+                        <div>
+                            <p class="font-bold">${new Date(photo.date).toLocaleDateString('uk-UA')}</p>
+                            <p class="text-sm">${photo.weight} кг</p>
+                        </div>
+                        <button onclick="handleDeletePhoto('${photo.id}')" class="self-end text-white/70 hover:text-white transition p-1"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div>`;
+                photoGrid.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        const handlePhotoAdd = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    // Resize image to save space in localStorage
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL(file.type, 0.8); // Compress to 80% quality
+                    
+                    const currentDate = new Date().toISOString().split('T')[0];
+                    const latestEntry = [...weightData].sort((a,b) => new Date(b.date) - new Date(a.date))[0];
+                    const weightForPhoto = latestEntry ? latestEntry.weight : 'N/A';
+                    
+                    photoDiary.push({ id: crypto.randomUUID(), date: currentDate, weight: weightForPhoto, src: dataUrl });
+                    saveData('photos');
+                    updateUI();
+                    checkAchievements();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            addPhotoInput.value = '';
+        };
+
+        window.handleDeletePhoto = (id) => showConfirmModal(() => {
+            photoDiary = photoDiary.filter(p => p.id !== id);
+            saveData('photos');
+            updateUI();
+        }, "Видалити фото?", "Це фото буде видалено назавжди.");
 
         // --- Event Handlers & Actions ---
         const handleFormSubmit = (e) => {
@@ -444,7 +592,10 @@
             saveBtn.textContent = 'Зберегти'; cancelEditBtn.classList.add('hidden');
             dateInput.value = new Date().toISOString().split('T')[0];
         };
-        const showConfirmModal = (callback) => {
+        // NEW: Updated confirm modal to accept custom text
+        const showConfirmModal = (callback, title = 'Ви впевнені?', text = 'Цю дію неможливо буде скасувати.') => {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-text').textContent = text;
             confirmModal.classList.remove('hidden');
             const confirmBtn = document.getElementById('confirm-modal-confirm'), cancelBtn = document.getElementById('confirm-modal-cancel');
             const onConfirm = () => { callback(); onClose(); }, onClose = () => {
@@ -464,13 +615,14 @@
             themePinkBtn.classList.toggle('ring-2', theme === 'pink'); themeBlueBtn.classList.toggle('ring-2', theme !== 'pink');
             userSettings.theme = theme;
             if (shouldSave) saveData('settings');
+            renderChart(); // Re-render chart to apply theme colors
         };
         const handleExport = () => {
             if (weightData.length === 0) return alert("Немає даних для експорту.");
-            const dataStr = JSON.stringify({settings: userSettings, data: weightData, achievements}, null, 2);
+            const dataStr = JSON.stringify({settings: userSettings, data: weightData, achievements, photos: photoDiary}, null, 2);
             const link = document.createElement('a');
             link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-            link.download = 'onix_weight_progress.json';
+            link.download = `onix_progress_${new Date().toISOString().split('T')[0]}.json`;
             link.click();
         };
         const handleImport = (event) => {
@@ -480,8 +632,8 @@
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (imported && Array.isArray(imported.data) && imported.settings) {
-                        weightData = imported.data; userSettings = imported.settings; achievements = imported.achievements || {};
-                        saveData('data'); saveData('settings'); saveData('achievements');
+                        weightData = imported.data; userSettings = imported.settings; achievements = imported.achievements || {}; photoDiary = imported.photos || [];
+                        saveData('data'); saveData('settings'); saveData('achievements'); saveData('photos');
                         loadUserSettings(); updateUI();
                         alert('Дані успішно імпортовано!');
                     } else { throw new Error('Неправильний формат файлу.'); }
@@ -520,6 +672,29 @@
             exportBtn.addEventListener('click', handleExport);
             importBtn.addEventListener('click', () => importFileInput.click());
             importFileInput.addEventListener('change', handleImport);
+
+            // NEW: Event listeners for new features
+            addPhotoInput.addEventListener('change', handlePhotoAdd);
+            welcomeStartBtn.addEventListener('click', () => {
+                const height = document.getElementById('welcome-height').value;
+                const startWeight = document.getElementById('welcome-start-weight').value;
+                const goal = document.getElementById('welcome-goal').value;
+
+                if(height) userSettings.height = parseFloat(height);
+                if(goal) userSettings.goal = parseFloat(goal);
+                saveData('settings');
+
+                if(startWeight) {
+                    weightData.push({ id: crypto.randomUUID(), date: new Date().toISOString().split('T')[0], weight: parseFloat(startWeight), notes: 'Перший запис' });
+                    saveData('data');
+                }
+                
+                localStorage.setItem('onix-welcomed', 'true');
+                welcomeModal.classList.add('hidden');
+                loadUserSettings();
+                updateUI();
+                checkAchievements();
+            });
         };
         
         // --- START THE APP ---
@@ -529,6 +704,3 @@
     </script>
 </body>
 </html>
-
-
-
